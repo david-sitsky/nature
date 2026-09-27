@@ -1,0 +1,40 @@
+{
+  "version": 8,
+  "sources": {
+    "esri-sat": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "© Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+    },
+    "esri-ref": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "© Esri"
+    }
+  },
+  "layers": [
+    {
+      "id": "sat-imagery",
+      "type": "raster",
+      "source": "esri-sat",
+      "minzoom": 0,
+      "maxzoom": 22
+    },
+    {
+      "id": "sat-labels",
+      "type": "raster",
+      "source": "esri-ref",
+      "minzoom": 0,
+      "maxzoom": 22,
+      "paint": { "raster-opacity": 0.85 }
+    }
+  ]
+}
