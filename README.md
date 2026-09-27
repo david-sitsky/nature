@@ -1,6 +1,6 @@
-# 🐸 FrogID v7 — Interactive Australia Visualization
+# 🐸 FrogID v7 — Interactive Australia Visualisation
 
-An interactive, client-side web visualization mapping **1,183,011 frog recording events** across Australia from the **FrogID v7 dataset** (covering 2017 to 2024). Built with **deck.gl v9**, **MapLibre GL JS**, and **HTML5/ES Modules**.
+An interactive, client-side web visualisation mapping **1,183,011 frog recording events** across Australia from the **FrogID v7 dataset** (covering 2017 to 2024). Built with **deck.gl v9**, **MapLibre GL JS**, and **HTML5/ES Modules**.
 
 ---
 
