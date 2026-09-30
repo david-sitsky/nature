@@ -132,19 +132,39 @@ class FrogApp {
 
   _showSoundHint() {
     if (!this.dom.soundHint || (this.audio && this.audio.soundEnabled)) return;
+
+    // Check localStorage so hint is only shown ONCE to a user across sessions
+    try {
+      if (localStorage.getItem('frogid_sound_hint_shown') === 'true') return;
+    } catch (_) {}
+
     setTimeout(() => {
       if (this.audio && !this.audio.soundEnabled && this.dom.soundHint) {
+        try {
+          localStorage.setItem('frogid_sound_hint_shown', 'true');
+        } catch (_) {}
+
         this.dom.soundHint.classList.remove('hidden');
 
         const timer = setTimeout(() => {
           this.dom.soundHint.classList.add('hidden');
-        }, 7000);
+        }, 8000);
 
-        this.dom.soundHint.addEventListener('click', () => {
+        const closeBtn = document.getElementById('sound-hint-close');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearTimeout(timer);
+            this.dom.soundHint.classList.add('hidden');
+          });
+        }
+
+        this.dom.soundHint.addEventListener('click', (e) => {
+          if (e.target === closeBtn) return;
           clearTimeout(timer);
           this.dom.soundHint.classList.add('hidden');
           this._toggleSound();
-        }, { once: true });
+        });
       }
     }, 1000);
   }
