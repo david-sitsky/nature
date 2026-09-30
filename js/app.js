@@ -11,7 +11,7 @@
  */
 
 import { loadData } from './data.js?v=7';
-import { FrogMap } from './map.js?v=8';
+import { FrogMap } from './map.js?v=9';
 import { AudioManager } from './audio.js?v=11';
 
 class FrogApp {

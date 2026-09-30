@@ -113,16 +113,31 @@ export class FrogMap {
 
     this.map.addControl(this.overlay);
 
-    // Sync MapLibre viewport & deck.gl projection matrix on style load, canvas resize, and initial map load
-    this.map.on('load', () => {
+    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change, and resize
+    const syncMapAndDeck = () => {
       this.map.resize();
+      this.map.triggerRepaint();
       this._updateLayers();
+    };
+
+    this.map.on('load', syncMapAndDeck);
+    this.map.on('styledata', syncMapAndDeck);
+    this.map.on('resize', () => {
+      this._updateLayers();
+      this.map.triggerRepaint();
+    });
+    this.map.on('move', () => {
+      this.map.triggerRepaint();
     });
 
-    this.map.on('styledata', () => {
-      this.map.resize();
-      this._updateLayers();
-    });
+    // ResizeObserver watches the actual #map-container DOM element dimensions frame-by-frame
+    const mapContainer = document.getElementById(containerId);
+    if (mapContainer && typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => {
+        syncMapAndDeck();
+      });
+      ro.observe(mapContainer);
+    }
 
     let lastWidth = window.innerWidth;
     let hasUserMoved = false;
@@ -132,13 +147,13 @@ export class FrogMap {
     });
 
     window.addEventListener('resize', () => {
-      this.map.resize();
-      this._updateLayers();
+      syncMapAndDeck();
       const newWidth = window.innerWidth;
       if (!hasUserMoved && Math.abs(newWidth - lastWidth) > 80) {
         lastWidth = newWidth;
         const v = calculateOptimalAustraliaViewport();
         this.map.jumpTo({ center: [v.longitude, v.latitude], zoom: v.zoom });
+        syncMapAndDeck();
       }
     });
   }
