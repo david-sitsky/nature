@@ -105,27 +105,26 @@ export class FrogMap {
 
     this.map.addControl(this.overlay);
 
-    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change, and container resize
-    const syncMapAndDeck = () => {
-      this.map.resize();
+    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change
+    const syncDeck = () => {
       this._updateLayers();
     };
 
-    this.map.on('load', syncMapAndDeck);
-    this.map.on('styledata', syncMapAndDeck);
-    this.map.on('resize', syncMapAndDeck);
+    this.map.on('load', syncDeck);
+    this.map.on('styledata', syncDeck);
+    this.map.on('resize', syncDeck);
 
     // ResizeObserver watches the actual #map-container DOM element dimensions frame-by-frame
     const mapContainer = document.getElementById(containerId);
     if (mapContainer && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
-        syncMapAndDeck();
+        this.map.resize();
       });
       ro.observe(mapContainer);
     }
 
     window.addEventListener('resize', () => {
-      syncMapAndDeck();
+      this.map.resize();
     });
   }
 
