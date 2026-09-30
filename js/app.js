@@ -386,7 +386,8 @@ class FrogApp {
       if (this.activeFilterIndices.has(sp.idx)) return false;
       return (sp.commonName||'').toLowerCase().includes(query)
           || sp.scientificName.toLowerCase().includes(query);
-    }).slice(0, 12);
+    }).sort((a, b) => (a.commonName || a.scientificName).localeCompare(b.commonName || b.scientificName))
+      .slice(0, 50);
 
     if (!matches.length) { this._closeDropdown(); return; }
 
