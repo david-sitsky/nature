@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🐸 FrogID v7 — Australia's Frogs Over Time</title>
+  <meta name="description" content="Interactive animated map showing 1.18 million frog recordings across Australia from 2017–2024">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css?v=16">
+</head>
+<body>
+
+  <!-- ─── Map ─── -->
+  <div id="map-container"></div>
+
+  <!-- ─── Loading ─── -->
+  <div id="loading-overlay">
+    <div class="loading-card">
+      <div class="loading-icon">🐸</div>
+      <h1 class="loading-title">FrogID v7</h1>
+      <p class="loading-subtitle">Australia's Frogs Over Time</p>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <p class="loading-status" id="loading-status">Initializing...</p>
+      <p class="loading-detail">1,183,011 expert-verified recordings · 218 species · 7 years</p>
+    </div>
+  </div>
+
+  <!-- ─── Top-Left Panel: Controls + Stats + Filter ─── -->
+  <div id="top-left-panel">
+    <!-- Playback Controls -->
+    <footer id="controls" class="glass hidden">
+      <div class="controls-row">
+        <button id="btn-play" class="ctrl-btn play-btn" title="Play / Pause (Space)">▶</button>
+        <button id="btn-sound" class="ctrl-btn sound-btn" title="Toggle Sound (M)">🔇</button>
+        <input type="range" id="scrubber" class="scrubber" min="0" max="2556" value="0" aria-label="Timeline">
+        <label class="fade-toggle" title="Fade old recordings">
+          <input type="checkbox" id="fade-toggle" checked>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="fade-label">Fade</span>
+        </label>
+        <div id="map-style-selector" class="style-selector-inline">
+          <button class="style-btn active" data-style="dark" title="Dark">🌙</button>
+          <button class="style-btn" data-style="streets" title="Streets">🗺️</button>
+          <button class="style-btn" data-style="satellite" title="Satellite">🛰️</button>
+        </div>
+      </div>
+      <div class="controls-info-row">
+        <span id="day-info" class="info-chip">Day 1 of 2,557</span>
+        <div class="speed-ctrl">
+          <span>Speed</span>
+          <input type="range" id="speed" min="1" max="10" value="10" step="1" aria-label="Speed">
+          <span id="speed-val">10×</span>
+        </div>
+        <span id="today-info" class="info-chip">0 today</span>
+      </div>
+    </footer>
+
+    <!-- Stats Bar -->
+    <header id="stats-bar" class="glass hidden">
+      <div class="stat">
+        <span class="stat-label">📅 DATE</span>
+        <span class="stat-value" id="stat-date">—</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-label">🐸 FROGID v7</span>
+        <span class="stat-value" id="stat-records">0</span>
+        <span class="stat-sub">recordings</span>
+      </div>
+    </header>
+
+    <!-- Species Filter -->
+    <div id="species-filter" class="glass hidden">
+      <div class="filter-input-wrap">
+        <span class="filter-icon">🔍</span>
+        <input type="text" id="filter-input" placeholder="Filter by frog name..." autocomplete="off" spellcheck="false">
+        <button id="filter-clear" class="filter-clear hidden" title="Clear filter">✕</button>
+      </div>
+      <div id="filter-pills" class="filter-pills"></div>
+      <div id="filter-dropdown" class="filter-dropdown hidden"></div>
+    </div>
+  </div>
+
+  <!-- ─── Right Panel Column: hover popup + filter species popups ─── -->
+  <div id="right-panels">
+    <!-- Hover popup (single, updates when hovering different species) -->
+    <div id="hover-panel" class="species-panel glass hidden">
+      <button class="panel-close" data-action="close-hover" title="Close">✕</button>
+      <div class="panel-header">
+        <img class="panel-img" id="hover-img" src="" alt="" loading="lazy">
+        <div class="panel-names">
+          <div class="panel-common"  id="hover-common">—</div>
+          <div class="panel-sci"     id="hover-sci">—</div>
+          <div class="panel-family"  id="hover-family">—</div>
+        </div>
+      </div>
+      <audio id="hover-audio" class="panel-audio hidden" controls preload="none"></audio>
+      <a id="hover-link" class="panel-link" href="#" target="_blank" rel="noopener">View frog profile ↗</a>
+    </div>
+    <!-- Filter species popups injected here by JS -->
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
+  <script type="module" src="js/app.js?v=16"></script>
+</body>
+</html>
