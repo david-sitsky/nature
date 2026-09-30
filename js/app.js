@@ -80,6 +80,7 @@ class FrogApp {
       statDate:         $('stat-date'),
       statRecords:      $('stat-records'),
       controls:         $('controls'),
+      btnRewind:        $('btn-rewind'),
       btnPlay:          $('btn-play'),
       btnSound:         $('btn-sound'),
       scrubber:         $('scrubber'),
@@ -237,6 +238,10 @@ class FrogApp {
   // ─── Playback ────────────────────────────────────────────
 
   _setupControls() {
+    this.dom.btnRewind.addEventListener('click', () => {
+      this._pause();
+      this._setDay(0);
+    });
     this.dom.btnPlay.addEventListener('click', () => this._togglePlay());
     this.dom.btnSound.addEventListener('click', () => this._toggleSound());
 
