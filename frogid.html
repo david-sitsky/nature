@@ -31,7 +31,13 @@
     <footer id="controls" class="glass hidden">
       <div class="controls-row">
         <button id="btn-play" class="ctrl-btn play-btn" title="Play / Pause (Space)">▶</button>
-        <button id="btn-sound" class="ctrl-btn sound-btn" title="Toggle Sound (M)">🔇</button>
+        <div class="sound-btn-container">
+          <button id="btn-sound" class="ctrl-btn sound-btn" title="Toggle Sound (M)">🔇</button>
+          <div id="sound-hint" class="sound-hint hidden">
+            <div class="sound-hint-arrow"></div>
+            <span>Let the frogs croak! 🔊</span>
+          </div>
+        </div>
         <input type="range" id="scrubber" class="scrubber" min="0" max="2556" value="0" aria-label="Timeline">
         <label class="fade-toggle" title="Fade old recordings">
           <input type="checkbox" id="fade-toggle" checked>
@@ -102,6 +108,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
-  <script type="module" src="js/app.js?v=17"></script>
+  <script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>

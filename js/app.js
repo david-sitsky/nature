@@ -102,6 +102,7 @@ class FrogApp {
       hoverFamily:      $('hover-family'),
       hoverAudio:       $('hover-audio'),
       hoverLink:        $('hover-link'),
+      soundHint:        $('sound-hint'),
     };
   }
 
@@ -125,7 +126,27 @@ class FrogApp {
         this.map.map.resize();
         this.map._updateLayers();
       }
+      this._showSoundHint();
     }, 500);
+  }
+
+  _showSoundHint() {
+    if (!this.dom.soundHint || (this.audio && this.audio.soundEnabled)) return;
+    setTimeout(() => {
+      if (this.audio && !this.audio.soundEnabled && this.dom.soundHint) {
+        this.dom.soundHint.classList.remove('hidden');
+
+        const timer = setTimeout(() => {
+          this.dom.soundHint.classList.add('hidden');
+        }, 7000);
+
+        this.dom.soundHint.addEventListener('click', () => {
+          clearTimeout(timer);
+          this.dom.soundHint.classList.add('hidden');
+          this._toggleSound();
+        }, { once: true });
+      }
+    }, 1000);
   }
 
   // ─── Hover popup ─────────────────────────────────────────
@@ -246,6 +267,9 @@ class FrogApp {
     this.audio.setSoundEnabled(enabled);
     this.dom.btnSound.textContent = enabled ? '🔊' : '🔇';
     this.dom.btnSound.classList.toggle('active', enabled);
+    if (this.dom.soundHint) {
+      this.dom.soundHint.classList.add('hidden');
+    }
   }
 
   _togglePlay() { this.playing ? this._pause() : this._play(); }
