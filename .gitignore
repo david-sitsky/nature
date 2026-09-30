@@ -5,3 +5,8 @@ node_modules/
 *.*~
 data/audio_cache/
 
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
