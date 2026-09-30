@@ -139,22 +139,8 @@ export class FrogMap {
       ro.observe(mapContainer);
     }
 
-    let lastWidth = window.innerWidth;
-    let hasUserMoved = false;
-
-    this.map.on('movestart', (e) => {
-      if (e.originalEvent) hasUserMoved = true;
-    });
-
     window.addEventListener('resize', () => {
       syncMapAndDeck();
-      const newWidth = window.innerWidth;
-      if (!hasUserMoved && Math.abs(newWidth - lastWidth) > 80) {
-        lastWidth = newWidth;
-        const v = calculateOptimalAustraliaViewport();
-        this.map.jumpTo({ center: [v.longitude, v.latitude], zoom: v.zoom });
-        syncMapAndDeck();
-      }
     });
   }
 
