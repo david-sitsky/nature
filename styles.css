@@ -93,6 +93,7 @@ button, input, select, label, .filter-pill, .species-panel {
 #stats-bar {
   display: flex; align-items: center; gap: 16px;
   padding: 9px 16px; border-radius: 12px; white-space: nowrap;
+  position: relative; z-index: 10;
 }
 .stat { display: flex; flex-direction: column; }
 .stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; color: #71717a; text-transform: uppercase; }
@@ -101,7 +102,7 @@ button, input, select, label, .filter-pill, .species-panel {
 .stat-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 
 #species-filter {
-  padding: 8px 12px; border-radius: 12px; position: relative;
+  padding: 8px 12px; border-radius: 12px; position: relative; z-index: 5;
 }
 .filter-input-wrap { display: flex; align-items: center; gap: 8px; }
 .filter-icon { font-size: 14px; flex-shrink: 0; }
@@ -244,6 +245,8 @@ button, input, select, label, .filter-pill, .species-panel {
   padding: 8px 12px 6px;
   border-radius: 12px;
   width: 100%;
+  position: relative;
+  z-index: 20;
 }
 
 .controls-row { display: flex; align-items: center; gap: 8px; }
