@@ -133,15 +133,15 @@ class FrogApp {
   _showSoundHint() {
     if (!this.dom.soundHint || (this.audio && this.audio.soundEnabled)) return;
 
-    // Check localStorage so hint is only shown ONCE to a user across sessions
+    // Check sessionStorage so hint is only shown ONCE per tab session
     try {
-      if (localStorage.getItem('frogid_sound_hint_shown_v2') === 'true') return;
+      if (sessionStorage.getItem('frogid_sound_hint_shown') === 'true') return;
     } catch (_) {}
 
     setTimeout(() => {
       if (this.audio && !this.audio.soundEnabled && this.dom.soundHint) {
         try {
-          localStorage.setItem('frogid_sound_hint_shown_v2', 'true');
+          sessionStorage.setItem('frogid_sound_hint_shown', 'true');
         } catch (_) {}
 
         this.dom.soundHint.classList.remove('hidden');
