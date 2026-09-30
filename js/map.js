@@ -104,8 +104,9 @@ export class FrogMap {
     }
 
     // DeckGL overlay manages high-performance WebGL scatterplot layers
+    // Using interleaved: false ensures 100% rock-solid alignment with MapLibre v4 on window maximize/resize
     this.overlay = new MapboxOverlay({
-      interleaved: true,
+      interleaved: false,
       pickingRadius: 15,
       onClick: (info) => this._handleClick(info),
       onHover: (info) => this._handleHover(info),
@@ -113,22 +114,15 @@ export class FrogMap {
 
     this.map.addControl(this.overlay);
 
-    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change, and resize
+    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change, and container resize
     const syncMapAndDeck = () => {
       this.map.resize();
-      this.map.triggerRepaint();
       this._updateLayers();
     };
 
     this.map.on('load', syncMapAndDeck);
     this.map.on('styledata', syncMapAndDeck);
-    this.map.on('resize', () => {
-      this._updateLayers();
-      this.map.triggerRepaint();
-    });
-    this.map.on('move', () => {
-      this.map.triggerRepaint();
-    });
+    this.map.on('resize', syncMapAndDeck);
 
     // ResizeObserver watches the actual #map-container DOM element dimensions frame-by-frame
     const mapContainer = document.getElementById(containerId);
