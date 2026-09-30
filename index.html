@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>🐸 FrogID v7 — Australia's Frogs Over Time</title>
   <meta name="description" content="Interactive animated map showing 1.18 million frog recordings across Australia from 2017–2024">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -31,6 +31,7 @@
     <footer id="controls" class="glass hidden">
       <div class="controls-row">
         <button id="btn-play" class="ctrl-btn play-btn" title="Play / Pause (Space)">▶</button>
+        <button id="btn-sound" class="ctrl-btn sound-btn" title="Toggle Sound (M)">🔇</button>
         <input type="range" id="scrubber" class="scrubber" min="0" max="2556" value="0" aria-label="Timeline">
         <label class="fade-toggle" title="Fade old recordings">
           <input type="checkbox" id="fade-toggle" checked>
@@ -101,6 +102,6 @@
 
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=16"></script>
 </body>
 </html>

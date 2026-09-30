@@ -1,17 +1,18 @@
 /**
  * FrogID v7 — Map Visualization Module
  *
- * deck.gl + MapLibre GL JS: three-layer rendering, hover-driven info updates,
- * species filtering, fade mode, map style switching.
+ * MapLibre GL JS + deck.gl MapboxOverlay: native mobile touch gestures,
+ * three-layer rendering, hover-driven info updates, species filtering, fade mode.
  */
 
-const DeckGL = globalThis.deck.DeckGL;
+const maplibregl = globalThis.maplibregl;
+const MapboxOverlay = globalThis.deck.MapboxOverlay || globalThis.deck.MapLibreOverlay;
 const ScatterplotLayer = globalThis.deck.ScatterplotLayer;
 
 const MAP_STYLES = {
   dark:      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   streets:   'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  satellite: 'data/satellite-style.json',   // served locally, URL change detected by deck.gl
+  satellite: 'data/satellite-style.json',   // served locally
 };
 
 const FADE_WINDOW = 60; // days
@@ -27,9 +28,6 @@ function calculateOptimalAustraliaViewport() {
   const isMobilePortrait = (w <= 600 && h > w);
 
   const centerLng = 133.5;
-  // On mobile portrait, top controls occupy top ~210px of screen space.
-  // Setting centerLat = -10.0 provides a perfectly balanced vertical centering
-  // in the open space below the top-left controls stack.
   const centerLat = isMobilePortrait ? -10.0 : -28.8;
 
   let zoom;
@@ -70,42 +68,64 @@ export class FrogMap {
 
     const initialView = calculateOptimalAustraliaViewport();
 
-    this.deckgl = new DeckGL({
+    // MapLibre GL JS handles 100% of native map touch gestures (pan, pinch-zoom, double-tap zoom)
+    this.map = new maplibregl.Map({
       container: containerId,
-      mapLib: globalThis.maplibregl,
-      mapStyle: MAP_STYLES.dark,
-      initialViewState: {
-        longitude: initialView.longitude,
-        latitude:  initialView.latitude,
-        zoom: initialView.zoom,
-        minZoom: 2,
-        maxZoom: 19,
-        pitch: 0,
-        bearing: 0,
-      },
-      controller: { dragRotate: false },
-      layers: [],
-      onHover:  (info) => this._handleHover(info),
-      onClick:  () => {},   // no-op; click is unused
+      style: MAP_STYLES.dark,
+      center: [initialView.longitude, initialView.latitude],
+      zoom: initialView.zoom,
+      minZoom: 1,
+      maxZoom: 19,
+      pitchWithRotate: false,
+      dragRotate: false,
+      touchPitch: false,
+      renderWorldCopies: true,
+    });
+
+    // Disable 2-finger map rotation so pinch gestures focus purely on smooth 2D zoom & pan
+    if (this.map.touchZoomRotate) {
+      this.map.touchZoomRotate.disableRotation();
+    }
+
+    // Safety touch reset: when fingers leave the screen, reset gesture state machine to prevent lockups
+    const canvas = this.map.getCanvas();
+    if (canvas) {
+      const resetTouch = () => {
+        if (this.map.touchZoomRotate && typeof this.map.touchZoomRotate.disable === 'function') {
+          this.map.touchZoomRotate.disable();
+          this.map.touchZoomRotate.enable();
+          this.map.touchZoomRotate.disableRotation();
+        }
+      };
+      canvas.addEventListener('touchend', (e) => {
+        if (e.touches && e.touches.length === 0) resetTouch();
+      }, { passive: true });
+      canvas.addEventListener('touchcancel', resetTouch, { passive: true });
+    }
+
+    // DeckGL overlay manages high-performance WebGL scatterplot layers
+    this.overlay = new MapboxOverlay({
+      interleaved: true,
+      pickingRadius: 15,
+      onClick: (info) => this._handleClick(info),
+      onHover: (info) => this._handleHover(info),
+    });
+
+    this.map.addControl(this.overlay);
+
+    let lastWidth = window.innerWidth;
+    let hasUserMoved = false;
+
+    this.map.on('movestart', (e) => {
+      if (e.originalEvent) hasUserMoved = true;
     });
 
     window.addEventListener('resize', () => {
-      const v = calculateOptimalAustraliaViewport();
-      const map = this.deckgl._map || this.deckgl.getMapboxMap?.() || null;
-      if (map && typeof map.jumpTo === 'function') {
-        map.jumpTo({ center: [v.longitude, v.latitude], zoom: v.zoom });
-      } else {
-        this.deckgl.setProps({
-          initialViewState: {
-            longitude: v.longitude,
-            latitude:  v.latitude,
-            zoom: v.zoom,
-            minZoom: 2,
-            maxZoom: 19,
-            pitch: 0,
-            bearing: 0,
-          }
-        });
+      const newWidth = window.innerWidth;
+      if (!hasUserMoved && Math.abs(newWidth - lastWidth) > 80) {
+        lastWidth = newWidth;
+        const v = calculateOptimalAustraliaViewport();
+        this.map.jumpTo({ center: [v.longitude, v.latitude], zoom: v.zoom });
       }
     });
   }
@@ -122,13 +142,10 @@ export class FrogMap {
     this._updateLayers();
   }
 
-  /**
-   * Switch map base style. All styles are URL strings so deck.gl detects the change reliably.
-   */
   setMapStyle(styleName) {
     const url = MAP_STYLES[styleName];
     if (!url) return;
-    this.deckgl.setProps({ mapStyle: url });
+    this.map.setStyle(url);
   }
 
   setFilter(speciesIndices) {
@@ -145,26 +162,42 @@ export class FrogMap {
     return { total: endIdx, today: endIdx - (offsets[day] ?? 0) };
   }
 
-  // ─── Hover ───────────────────────────────────────────────
+  // ─── Hover & Tap ─────────────────────────────────────────
 
   _handleHover(info) {
-    const container = document.getElementById('map-container');
+    // If map is currently moving/panning/zooming, DO NOT trigger hover popups
+    if (this.map && (this.map.isMoving() || this.map.isZooming())) return;
 
-    if (!info || info.index < 0 || !info.layer || info.layer.id === 'glow') {
-      container.style.cursor = '';
-      // Debounce no-hover but do NOT call any hide callback —
-      // popups persist until the user closes them with ✕
+    // On touch devices, ignore hover events so touch start never pops open UI elements mid-gesture
+    const src = info?.srcEvent;
+    if (src && (src.pointerType === 'touch' || src.type?.startsWith('touch'))) {
       return;
     }
 
-    container.style.cursor = 'pointer';
+    const container = document.getElementById('map-container');
+    if (!info || info.index < 0 || !info.layer || info.layer.id === 'glow') {
+      if (container) container.style.cursor = '';
+      return;
+    }
+
+    if (container) container.style.cursor = 'pointer';
     const recordIdx = this._resolveRecordIndex(info);
     if (recordIdx < 0) return;
 
-    // Only fire callback when the hovered record changes (perf + prevents flicker)
     if (recordIdx === this._lastHoveredRecord) return;
     this._lastHoveredRecord = recordIdx;
 
+    if (this.onRecord) this.onRecord(recordIdx);
+  }
+
+  _handleClick(info) {
+    if (!info || info.index < 0 || !info.layer || info.layer.id === 'glow') {
+      return;
+    }
+    const recordIdx = this._resolveRecordIndex(info);
+    if (recordIdx < 0) return;
+
+    this._lastHoveredRecord = recordIdx;
     if (this.onRecord) this.onRecord(recordIdx);
   }
 
@@ -266,7 +299,7 @@ export class FrogMap {
             getFillColor:{ value: active.colors.subarray(histStart*4, endIdx*4),    size: 4 },
           },
         },
-        getRadius: 3, radiusUnits: 'pixels', radiusMinPixels: 1.5, radiusMaxPixels: 8,
+        getRadius: 3, radiusUnits: 'pixels', radiusMinPixels: 2.5, radiusMaxPixels: 9,
         opacity: this.fadeMode ? 0.35 : 0.55,
         pickable: true, autoHighlight: true, highlightColor: [255,255,255,80],
         parameters: { depthTest: false },
@@ -283,7 +316,7 @@ export class FrogMap {
             getPosition: { value: active.positions.subarray(dayStart*2, dayEnd*2), size: 2 },
           },
         },
-        getRadius: 20, radiusUnits: 'pixels', radiusMinPixels: 10,
+        getRadius: 20, radiusUnits: 'pixels', radiusMinPixels: 12,
         getFillColor: [60, 220, 100, 35], opacity: 0.35,
         pickable: false, parameters: { depthTest: false },
       }));
@@ -297,13 +330,13 @@ export class FrogMap {
             getFillColor:{ value: active.pulseColors.subarray(dayStart*4, dayEnd*4), size: 4 },
           },
         },
-        getRadius: 7, radiusUnits: 'pixels', radiusMinPixels: 3, radiusMaxPixels: 14,
+        getRadius: 8, radiusUnits: 'pixels', radiusMinPixels: 5, radiusMaxPixels: 16,
         opacity: 0.9, pickable: true, parameters: { depthTest: false },
         _dayStart: dayStart,
       }));
     }
 
-    this.deckgl.setProps({ layers });
+    this.overlay.setProps({ layers });
   }
 
   _resolveRecordIndex(info) {

@@ -14,8 +14,36 @@ html, body {
 .hidden { display: none !important; }
 
 /* ─── Map ─── */
-#map-container { position: fixed; inset: 0; }
-#map-container canvas { outline: none; }
+#map-container {
+  position: fixed;
+  inset: 0;
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+#map-container canvas,
+.deck-canvas,
+.maplibregl-canvas {
+  outline: none;
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* UI panels prevent browser page zoom */
+#top-left-panel,
+#right-panels,
+.glass,
+#loading-overlay {
+  touch-action: pan-y;
+}
+button, input, select, label, .filter-pill, .species-panel {
+  touch-action: manipulation;
+}
 
 /* ─── Glassmorphism ─── */
 .glass {
@@ -230,6 +258,10 @@ html, body {
 .ctrl-btn:active { transform: scale(0.92); }
 .play-btn { width: 34px; height: 34px; font-size: 14px; background: #16a34a; color: #fff; }
 .play-btn:hover { background: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.4); color: #fff; }
+
+.sound-btn { width: 34px; height: 34px; font-size: 14px; background: rgba(255,255,255,0.08); color: #a1a1aa; }
+.sound-btn.active { background: #16a34a; color: #fff; box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+.sound-btn.active:hover { background: #22c55e; }
 
 .fade-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; user-select: none; }
 .fade-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }

@@ -10,8 +10,9 @@
  *  - Both types live in the #right-panels flex column.
  */
 
-import { loadData } from './data.js';
-import { FrogMap } from './map.js';
+import { loadData } from './data.js?v=7';
+import { FrogMap } from './map.js?v=7';
+import { AudioManager } from './audio.js?v=11';
 
 class FrogApp {
   constructor() {
@@ -48,10 +49,13 @@ class FrogApp {
         (recordIdx) => this._onHover(recordIdx),  // only fired on new species hover
       );
 
+      this.audio = new AudioManager(this.data.speciesData);
+
       this._setupControls();
       this._setupFilter();
       this._setupMapStyleSwitcher();
       this._setupHoverPanelClose();
+      this._setupGesturePrevention();
 
       this._hideLoading();
       ['statsBar','controls','speciesFilter','mapStyleSelector'].forEach(k =>
@@ -77,6 +81,7 @@ class FrogApp {
       statRecords:      $('stat-records'),
       controls:         $('controls'),
       btnPlay:          $('btn-play'),
+      btnSound:         $('btn-sound'),
       scrubber:         $('scrubber'),
       speedSlider:      $('speed'),
       speedVal:         $('speed-val'),
@@ -186,6 +191,7 @@ class FrogApp {
 
   _setupControls() {
     this.dom.btnPlay.addEventListener('click', () => this._togglePlay());
+    this.dom.btnSound.addEventListener('click', () => this._toggleSound());
 
     this.dom.scrubber.max = this.data.metadata.totalDays - 1;
     this.dom.scrubber.addEventListener('input', () => {
@@ -207,6 +213,7 @@ class FrogApp {
       const max = this.data.metadata.totalDays - 1;
       switch (e.code) {
         case 'Space':      e.preventDefault(); this._togglePlay(); break;
+        case 'KeyM':       e.preventDefault(); this._toggleSound(); break;
         case 'ArrowLeft':  e.preventDefault(); this._pause(); this._setDay(Math.max(0,   this.currentDay - (e.shiftKey?7:1))); break;
         case 'ArrowRight': e.preventDefault(); this._pause(); this._setDay(Math.min(max, this.currentDay + (e.shiftKey?7:1))); break;
         case 'Home':       e.preventDefault(); this._pause(); this._setDay(0); break;
@@ -217,16 +224,36 @@ class FrogApp {
     });
   }
 
+  _setupGesturePrevention() {
+    // Prevent iOS Safari / Chrome page zoom gestures on HTML UI elements, but NEVER on the map container
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(eventType => {
+      document.addEventListener(eventType, (e) => {
+        if (!e.target.closest('#map-container')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+    });
+  }
+
+  _toggleSound() {
+    const enabled = !this.audio.soundEnabled;
+    this.audio.setSoundEnabled(enabled);
+    this.dom.btnSound.textContent = enabled ? '🔊' : '🔇';
+    this.dom.btnSound.classList.toggle('active', enabled);
+  }
+
   _togglePlay() { this.playing ? this._pause() : this._play(); }
   _play() {
     if (this.currentDay >= this.data.metadata.totalDays - 1) this._setDay(0);
     this.playing = true;
     this.dom.btnPlay.textContent = '⏸';
+    this.audio.setPlaying(true);
     this._scheduleTick();
   }
   _pause() {
     this.playing = false;
     this.dom.btnPlay.textContent = '▶';
+    this.audio.setPlaying(false);
     clearTimeout(this.tickTimer); this.tickTimer = null;
   }
   _scheduleTick() {
@@ -393,6 +420,7 @@ class FrogApp {
 
   _applyFilter() {
     this.map.setFilter(new Set(this.activeFilterIndices));
+    if (this.audio) this.audio.setFilterIndices(this.activeFilterIndices);
     this._updateUI();
   }
 
