@@ -11,7 +11,7 @@
  */
 
 import { loadData } from './data.js?v=7';
-import { FrogMap } from './map.js?v=11';
+import { FrogMap } from './map.js?v=12';
 import { AudioManager } from './audio.js?v=11';
 
 class FrogApp {
@@ -135,13 +135,13 @@ class FrogApp {
 
     // Check localStorage so hint is only shown ONCE to a user across sessions
     try {
-      if (localStorage.getItem('frogid_sound_hint_shown') === 'true') return;
+      if (localStorage.getItem('frogid_sound_hint_shown_v2') === 'true') return;
     } catch (_) {}
 
     setTimeout(() => {
       if (this.audio && !this.audio.soundEnabled && this.dom.soundHint) {
         try {
-          localStorage.setItem('frogid_sound_hint_shown', 'true');
+          localStorage.setItem('frogid_sound_hint_shown_v2', 'true');
         } catch (_) {}
 
         this.dom.soundHint.classList.remove('hidden');
@@ -272,12 +272,10 @@ class FrogApp {
   }
 
   _setupGesturePrevention() {
-    // Prevent iOS Safari / Chrome page zoom gestures on HTML UI elements, but NEVER on the map container
+    // Prevent iOS Safari / Chrome page zoom gestures on HTML UI elements AND the map container
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(eventType => {
       document.addEventListener(eventType, (e) => {
-        if (!e.target.closest('#map-container')) {
-          e.preventDefault();
-        }
+        e.preventDefault();
       }, { passive: false });
     });
   }

@@ -85,23 +85,14 @@ export class FrogMap {
     // Disable 2-finger map rotation so pinch gestures focus purely on smooth 2D zoom & pan
     if (this.map.touchZoomRotate) {
       this.map.touchZoomRotate.disableRotation();
+      // Lower the zoom threshold so diagonal pinches instantly lock into 'zoom' mode
+      // before they can trigger the hidden 'rotate' threshold and get discarded.
+      if (typeof this.map.touchZoomRotate.setZoomThreshold === 'function') {
+        this.map.touchZoomRotate.setZoomThreshold(0.01);
+      }
     }
 
-    // Safety touch reset: when fingers leave the screen, reset gesture state machine to prevent lockups
-    const canvas = this.map.getCanvas();
-    if (canvas) {
-      const resetTouch = () => {
-        if (this.map.touchZoomRotate && typeof this.map.touchZoomRotate.disable === 'function') {
-          this.map.touchZoomRotate.disable();
-          this.map.touchZoomRotate.enable();
-          this.map.touchZoomRotate.disableRotation();
-        }
-      };
-      canvas.addEventListener('touchend', (e) => {
-        if (e.touches && e.touches.length === 0) resetTouch();
-      }, { passive: true });
-      canvas.addEventListener('touchcancel', resetTouch, { passive: true });
-    }
+
 
     // DeckGL overlay manages high-performance WebGL scatterplot layers
     // Using interleaved: false ensures 100% rock-solid alignment with MapLibre v4 on window maximize/resize
