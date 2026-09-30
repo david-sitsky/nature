@@ -113,6 +113,17 @@ export class FrogMap {
 
     this.map.addControl(this.overlay);
 
+    // Sync MapLibre viewport & deck.gl projection matrix on style load, canvas resize, and initial map load
+    this.map.on('load', () => {
+      this.map.resize();
+      this._updateLayers();
+    });
+
+    this.map.on('styledata', () => {
+      this.map.resize();
+      this._updateLayers();
+    });
+
     let lastWidth = window.innerWidth;
     let hasUserMoved = false;
 
@@ -121,6 +132,8 @@ export class FrogMap {
     });
 
     window.addEventListener('resize', () => {
+      this.map.resize();
+      this._updateLayers();
       const newWidth = window.innerWidth;
       if (!hasUserMoved && Math.abs(newWidth - lastWidth) > 80) {
         lastWidth = newWidth;

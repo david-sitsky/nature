@@ -11,7 +11,7 @@
  */
 
 import { loadData } from './data.js?v=7';
-import { FrogMap } from './map.js?v=7';
+import { FrogMap } from './map.js?v=8';
 import { AudioManager } from './audio.js?v=11';
 
 class FrogApp {
@@ -119,7 +119,13 @@ class FrogApp {
 
   _hideLoading() {
     this.dom.loadingOverlay.classList.add('fade-out');
-    setTimeout(() => this.dom.loadingOverlay.classList.add('hidden'), 500);
+    setTimeout(() => {
+      this.dom.loadingOverlay.classList.add('hidden');
+      if (this.map && this.map.map) {
+        this.map.map.resize();
+        this.map._updateLayers();
+      }
+    }, 500);
   }
 
   // ─── Hover popup ─────────────────────────────────────────
