@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('Bogong Moth Visualizer', () => {
+test.describe('Bogong Moth Visualiser', () => {
   test('loads without errors and UI elements appear', async ({ page }) => {
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));

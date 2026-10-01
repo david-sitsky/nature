@@ -1,6 +1,6 @@
 # Visualization Engine Architecture
 
-This document serves as a knowledge base for the nature visualization engine, summarizing the architecture, lessons learned, and providing a starting point for adapting the engine for new datasets (e.g., the Bogong Moth visualizer).
+This document serves as a knowledge base for the nature visualization engine, summarizing the architecture, lessons learned, and providing a starting point for adapting the engine for new datasets (e.g., the Bogong Moth visualiser).
 
 ## System Overview
 
@@ -38,9 +38,9 @@ Large raw datasets (e.g., CSVs) must be preprocessed into:
    - Traditional unit tests are poorly suited for this WebGL-heavy app. We rely on **Playwright** (`tests/ui.spec.js`, `tests/visual.spec.js`).
    - Run tests via `npm run test`. Always ensure these pass before committing.
 
-## Adapting for the Bogong Moth Visualizer
+## Adapting for the Bogong Moth Visualiser
 
-When starting the Bogong Moth visualizer in a new AI thread, follow these steps:
+When starting the Bogong Moth visualiser in a new AI thread, follow these steps:
 1. **Read this document** to understand the engine constraints.
 2. **Review `preprocess.py`** to understand how to convert the raw moth data into the required binary format.
 3. **Adapt `data.js`**: If the moth dataset has different fields (e.g., weather patterns instead of species), the binary unpacking logic in `data.js` and the Python preprocessor will need parallel adjustments.
