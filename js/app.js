@@ -10,9 +10,9 @@
  *  - Both types live in the #right-panels flex column.
  */
 
-import { loadData } from './data.js?v=7';
-import { FrogMap } from './map.js?v=13';
-import { AudioManager } from './audio.js?v=11';
+import { loadData } from './engine_data.js?v=8';
+import { EngineMap } from './engine_map.js?v=14';
+import { AudioManager } from './audio.js?v=12';
 
 class FrogApp {
   constructor() {
@@ -36,17 +36,31 @@ class FrogApp {
   async init() {
     this._cacheDom();
     try {
+      this._updateLoading('download', 0);
+      const speciesInfo = await fetch('data/species_info.json').then(r => r.json());
+      
+      let pendingMetadata = null;
+      // We need to fetch metadata first to map species string array
+      pendingMetadata = await fetch('data/metadata.json').then(r => r.json());
+
+      const speciesData = buildSpeciesData(pendingMetadata.species, speciesInfo);
+      const palette = generateFamilyPalette(speciesData);
+
       this.data = await loadData(
         'data/metadata.json',
         'data/frogid7.bin',
-        'data/species_info.json',
+        'frogid7-v6',
+        palette,
         (phase, pct) => this._updateLoading(phase, pct),
       );
 
-      this.map = new FrogMap(
+      // Attach enriched species info to the generic data object so the rest of app.js can use it
+      this.data.speciesData = speciesData;
+
+      this.map = new EngineMap(
         'map-container',
         this.data,
-        (recordIdx) => this._onHover(recordIdx),  // only fired on new species hover
+        (recordIdx) => this._onHover(recordIdx),
       );
 
       this.audio = new AudioManager(this.data.speciesData);
@@ -177,8 +191,8 @@ class FrogApp {
   // If the species is ALREADY showing in filter popups, we do not show a duplicate popup.
 
   _onHover(recordIdx) {
-    const { speciesData, speciesIndices } = this.data;
-    const spIdx = speciesIndices[recordIdx];
+    const { speciesData, categoryIndices } = this.data;
+    const spIdx = categoryIndices[recordIdx];
 
     // If this species is already active in filter popups, don't show a duplicate hover popup
     if (this.filterPopups.has(spIdx) || this.activeFilterIndices.has(spIdx)) {
@@ -532,5 +546,108 @@ class FrogApp {
   }
 }
 
-const app = new FrogApp();
-app.init();
+window.app = new FrogApp();
+window.app.init();
+
+// ─── Frog Family Logic ───
+const FAMILY_HUES = {
+  'Myobatrachidae':  30,    // warm amber/orange — ground frogs
+  'Limnodynastidae': 60,    // yellow-gold — swamp frogs
+  'Pelodryadidae':   150,   // green — tree frogs (largest group)
+  'Microhylidae':    270,   // purple — narrow-mouthed frogs
+  'Ranidae':         200,   // cyan — true frogs
+  'Bufonidae':       0,     // red — cane toad (invasive!)
+  'Mixophyidae':     100,   // lime-green — barred frogs
+  'Unknown':         180,   // teal fallback
+};
+
+function buildSpeciesData(speciesList, speciesInfoArray) {
+  const speciesLookup = {};
+  for (const info of speciesInfoArray) {
+    speciesLookup[info.scientificName] = info;
+  }
+  const VALID_FAMILIES = new Set([
+    'Myobatrachidae','Limnodynastidae','Pelodryadidae',
+    'Microhylidae','Ranidae','Bufonidae','Mixophyidae',
+  ]);
+  const GENUS_FAMILY = {
+    'Assa':'Myobatrachidae','Crinia':'Myobatrachidae','Geocrinia':'Myobatrachidae',
+    'Metacrinia':'Myobatrachidae','Myobatrachus':'Myobatrachidae','Paracrinia':'Myobatrachidae',
+    'Pseudophryne':'Myobatrachidae','Spicospina':'Myobatrachidae','Taudactylus':'Myobatrachidae',
+    'Uperoleia':'Myobatrachidae','Arenophryne':'Myobatrachidae',
+    'Adelotus':'Limnodynastidae','Heleioporus':'Limnodynastidae','Lechriodus':'Limnodynastidae',
+    'Limnodynastes':'Limnodynastidae','Neobatrachus':'Limnodynastidae','Notaden':'Limnodynastidae',
+    'Philoria':'Limnodynastidae','Platyplectrum':'Limnodynastidae',
+    'Carichyla':'Pelodryadidae','Chlorohyla':'Pelodryadidae','Coggerdonia':'Pelodryadidae',
+    'Colleeneremia':'Pelodryadidae','Cyclorana':'Pelodryadidae','Drymomantis':'Pelodryadidae',
+    'Dryopsophus':'Pelodryadidae','Litoria':'Pelodryadidae','Pelodryas':'Pelodryadidae',
+    'Pengilleyia':'Pelodryadidae','Ranoidea':'Pelodryadidae','Rawlinsonia':'Pelodryadidae',
+    'Sandyrana':'Pelodryadidae','Anstisia':'Pelodryadidae','Eremnoculus':'Pelodryadidae',
+    'Mahonabatrachus':'Pelodryadidae','Mosleyia':'Pelodryadidae','Rhyaconastes':'Pelodryadidae',
+    'Saganura':'Pelodryadidae','Spicicalyx':'Pelodryadidae','Sylvagemma':'Pelodryadidae',
+    'Austrochaperina':'Microhylidae','Cophixalus':'Microhylidae',
+    'Papurana':'Ranidae','Rhinella':'Bufonidae','Mixophyes':'Mixophyidae',
+  };
+  const resolveFamily = (raw, genus) => {
+    if (raw) {
+      const norm = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+      if (VALID_FAMILIES.has(norm)) return norm;
+    }
+    return GENUS_FAMILY[genus] || 'Unknown';
+  };
+  return speciesList.map((name, idx) => {
+    const info = speciesLookup[name] || {};
+    const genus = info.genus || name.split(' ')[0];
+    return {
+      idx,
+      scientificName: name,
+      commonName: info.commonName || null,
+      genus,
+      family: resolveFamily(info.family, genus),
+      slug: info.slug || name.toLowerCase().replace(/ /g, '-'),
+      profileUrl: info.profileUrl || `https://www.frogid.net.au/frogs/${name.toLowerCase().replace(/ /g, '-')}/`,
+      imageId: info.imageId || null,
+      thumbnailUrl: info.thumbnailUrl || null,
+      audioUrl: info.audioUrl || null,
+    };
+  });
+}
+
+function generateFamilyPalette(speciesData) {
+  const familyGroups = {};
+  for (const sp of speciesData) {
+    if (!familyGroups[sp.family]) familyGroups[sp.family] = [];
+    familyGroups[sp.family].push(sp);
+  }
+  const palette = new Array(speciesData.length);
+  for (const [family, members] of Object.entries(familyGroups)) {
+    const baseHue = FAMILY_HUES[family] ?? 180;
+    const hueRange = Math.min(50, members.length * 2);
+    members.sort((a, b) => a.scientificName.localeCompare(b.scientificName));
+    for (let i = 0; i < members.length; i++) {
+      const hueOffset = members.length > 1
+        ? (i / (members.length - 1) - 0.5) * hueRange
+        : 0;
+      const hue = (baseHue + hueOffset + 360) % 360;
+      const sat = 65 + (i % 4) * 8;
+      const light = 52 + (i % 5) * 4;
+      palette[members[i].idx] = hslToRgb(hue, sat, light);
+    }
+  }
+  return palette;
+}
+
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r, g, b;
+  if (h < 60)       { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else              { r = c; g = 0; b = x; }
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}

@@ -35,6 +35,9 @@ export class AudioManager {
   setFilterIndices(filterIndicesSet) {
     this.activeFilterIndices = Array.from(filterIndicesSet);
     this._updateFilterAudios();
+    if (this.soundEnabled && this.isPlaying) {
+      this.play();
+    }
   }
 
   setPlaying(playing) {

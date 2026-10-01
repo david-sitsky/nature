@@ -1,10 +1,3 @@
-/**
- * FrogID v7 — Map Visualization Module
- *
- * MapLibre GL JS + deck.gl MapboxOverlay: native mobile touch gestures,
- * three-layer rendering, hover-driven info updates, species filtering, fade mode.
- */
-
 const maplibregl = globalThis.maplibregl;
 const MapboxOverlay = globalThis.deck.MapboxOverlay || globalThis.deck.MapLibreOverlay;
 const ScatterplotLayer = globalThis.deck.ScatterplotLayer;
@@ -12,63 +5,40 @@ const ScatterplotLayer = globalThis.deck.ScatterplotLayer;
 const MAP_STYLES = {
   dark:      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   streets:   'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  satellite: 'data/satellite-style.json',   // served locally
+  satellite: 'data/satellite-style.json',
 };
 
 const FADE_WINDOW = 60; // days
 
-/**
- * Calculates conservative view state (center longitude/latitude + zoom level)
- * so all of Australia (including Tasmania & WA) fits comfortably on screen
- * with generous margins on any window size or device orientation.
- */
 function calculateOptimalAustraliaViewport() {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const isMobilePortrait = (w <= 600 && h > w);
-
   const centerLng = 133.5;
   const centerLat = isMobilePortrait ? -10.0 : -28.8;
-
   let zoom;
-  if (w <= 450) {
-    zoom = 2.15; // Mobile portrait: WA to QLD to Tasmania all fit with wide margins
-  } else if (w <= 650) {
-    zoom = 2.45; // Mobile landscape / small tablet
-  } else if (w <= 1000) {
-    zoom = 3.0;  // Tablet / small window
-  } else if (w <= 1350) {
-    zoom = 3.35; // Laptop / medium screen
-  } else {
-    zoom = 3.6;  // 1080p / 4K Desktop
-  }
-
-  return {
-    longitude: centerLng,
-    latitude: centerLat,
-    zoom: zoom,
-  };
+  if (w <= 450) zoom = 2.15;
+  else if (w <= 650) zoom = 2.45;
+  else if (w <= 1000) zoom = 3.0;
+  else if (w <= 1350) zoom = 3.35;
+  else zoom = 3.6;
+  
+  return { longitude: centerLng, latitude: centerLat, zoom };
 }
 
-export class FrogMap {
-  /**
-   * @param {string} containerId
-   * @param {object} data     — parsed FrogData
-   * @param {function} onRecord — callback(recordIdx) fired when a new species is hovered
-   */
-  constructor(containerId, data, onRecord) {
+export class EngineMap {
+  constructor(containerId, data, onRecord = null) {
     this.data = data;
     this.onRecord = onRecord;
     this.currentDay = 0;
     this.fadeMode = true;
     this.activeFilters = new Set();
-
+    
     this._lastHoveredRecord = -1;
     this._hoverTimer = null;
 
     const initialView = calculateOptimalAustraliaViewport();
 
-    // MapLibre GL JS handles 100% of native map touch gestures (pan, pinch-zoom, double-tap zoom)
     this.map = new maplibregl.Map({
       container: containerId,
       style: MAP_STYLES.dark,
@@ -82,20 +52,13 @@ export class FrogMap {
       renderWorldCopies: true,
     });
 
-    // Disable 2-finger map rotation so pinch gestures focus purely on smooth 2D zoom & pan
     if (this.map.touchZoomRotate) {
       this.map.touchZoomRotate.disableRotation();
-      // Lower the zoom threshold so diagonal pinches instantly lock into 'zoom' mode
-      // before they can trigger the hidden 'rotate' threshold and get discarded.
       if (typeof this.map.touchZoomRotate.setZoomThreshold === 'function') {
         this.map.touchZoomRotate.setZoomThreshold(0.01);
       }
     }
 
-
-
-    // DeckGL overlay manages high-performance WebGL scatterplot layers
-    // Using interleaved: false ensures 100% rock-solid alignment with MapLibre v4 on window maximize/resize
     this.overlay = new MapboxOverlay({
       interleaved: false,
       pickingRadius: 15,
@@ -105,7 +68,6 @@ export class FrogMap {
 
     this.map.addControl(this.overlay);
 
-    // Synchronize MapLibre viewport & deck.gl projection matrix on load, style change
     const syncDeck = () => {
       this._updateLayers();
     };
@@ -114,7 +76,6 @@ export class FrogMap {
     this.map.on('styledata', syncDeck);
     this.map.on('resize', syncDeck);
 
-    // ResizeObserver watches the actual #map-container DOM element dimensions frame-by-frame
     const mapContainer = document.getElementById(containerId);
     if (mapContainer && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
@@ -122,13 +83,10 @@ export class FrogMap {
       });
       ro.observe(mapContainer);
     }
-
     window.addEventListener('resize', () => {
       this.map.resize();
     });
   }
-
-  // ─── Public API ──────────────────────────────────────────
 
   setDay(day) {
     this.currentDay = day;
@@ -146,8 +104,8 @@ export class FrogMap {
     this.map.setStyle(url);
   }
 
-  setFilter(speciesIndices) {
-    this.activeFilters = speciesIndices;
+  setFilter(categoryIndices) {
+    this.activeFilters = categoryIndices;
     this._rebuildFilteredData();
     this._updateLayers();
   }
@@ -160,13 +118,9 @@ export class FrogMap {
     return { total: endIdx, today: endIdx - (offsets[day] ?? 0) };
   }
 
-  // ─── Hover & Tap ─────────────────────────────────────────
-
   _handleHover(info) {
-    // If map is currently moving/panning/zooming, DO NOT trigger hover popups
     if (this.map && (this.map.isMoving() || this.map.isZooming())) return;
-
-    // On touch devices, ignore hover events so touch start never pops open UI elements mid-gesture
+    
     const src = info?.srcEvent;
     if (src && (src.pointerType === 'touch' || src.type?.startsWith('touch'))) {
       return;
@@ -199,24 +153,22 @@ export class FrogMap {
     if (this.onRecord) this.onRecord(recordIdx);
   }
 
-  // ─── Filter helpers ──────────────────────────────────────
-
   _rebuildFilteredData() {
     if (this.activeFilters.size === 0) {
       this._filteredIndices = null;
       this._filteredPositions = null;
       this._filteredColors = null;
       this._filteredPulseColors = null;
-      this._filteredSpeciesIndices = null;
+      this._filteredCategoryIndices = null;
       this._filteredDayOffsets = null;
       return;
     }
 
-    const { speciesIndices, positions, colors, pulseColors, metadata } = this.data;
+    const { categoryIndices, positions, colors, pulseColors, metadata } = this.data;
     const n = metadata.recordCount;
     const filtered = [];
     for (let i = 0; i < n; i++) {
-      if (this.activeFilters.has(speciesIndices[i])) filtered.push(i);
+      if (this.activeFilters.has(categoryIndices[i])) filtered.push(i);
     }
 
     const fn = filtered.length;
@@ -224,7 +176,7 @@ export class FrogMap {
     this._filteredPositions     = new Float32Array(fn * 2);
     this._filteredColors        = new Uint8Array(fn * 4);
     this._filteredPulseColors   = new Uint8Array(fn * 4);
-    this._filteredSpeciesIndices= new Uint8Array(fn);
+    this._filteredCategoryIndices = new Uint8Array(fn);
 
     for (let j = 0; j < fn; j++) {
       const i = filtered[j];
@@ -234,7 +186,7 @@ export class FrogMap {
         this._filteredColors[j*4+c]      = colors[i*4+c];
         this._filteredPulseColors[j*4+c] = pulseColors[i*4+c];
       }
-      this._filteredSpeciesIndices[j] = speciesIndices[i];
+      this._filteredCategoryIndices[j] = categoryIndices[i];
     }
 
     this._filteredDayOffsets = new Array(metadata.dayOffsets.length);
@@ -249,27 +201,25 @@ export class FrogMap {
   _getActiveData() {
     if (this._filteredIndices) {
       return {
-        positions:      this._filteredPositions,
-        colors:         this._filteredColors,
-        pulseColors:    this._filteredPulseColors,
-        speciesIndices: this._filteredSpeciesIndices,
-        dayOffsets:     this._filteredDayOffsets,
-        recordCount:    this._filteredIndices.length,
-        originalIndices:this._filteredIndices,
+        positions:       this._filteredPositions,
+        colors:          this._filteredColors,
+        pulseColors:     this._filteredPulseColors,
+        categoryIndices: this._filteredCategoryIndices,
+        dayOffsets:      this._filteredDayOffsets,
+        recordCount:     this._filteredIndices.length,
+        originalIndices: this._filteredIndices,
       };
     }
     return {
-      positions:      this.data.positions,
-      colors:         this.data.colors,
-      pulseColors:    this.data.pulseColors,
-      speciesIndices: this.data.speciesIndices,
-      dayOffsets:     this.data.metadata.dayOffsets,
-      recordCount:    this.data.metadata.recordCount,
-      originalIndices:null,
+      positions:       this.data.positions,
+      colors:          this.data.colors,
+      pulseColors:     this.data.pulseColors,
+      categoryIndices: this.data.categoryIndices,
+      dayOffsets:      this.data.metadata.dayOffsets,
+      recordCount:     this.data.metadata.recordCount,
+      originalIndices: null,
     };
   }
-
-  // ─── Layer rendering ─────────────────────────────────────
 
   _updateLayers() {
     const active = this._getActiveData();

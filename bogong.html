@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bogong Moth Visualizer</title>
+  <meta name="description" content="Interactive animated map showing Bogong moth sightings over time">
+  <link rel="icon" type="image/svg+xml" href="favicon-moth.svg">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css?v=17">
+  <style>
+    /* Moth SVG styling */
+    .moth-icon {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      vertical-align: -0.125em;
+      fill: currentColor;
+    }
+    .loading-icon .moth-icon {
+      width: 64px;
+      height: 64px;
+      color: #F59E0B;
+    }
+    .stat-label .moth-icon {
+      color: #F59E0B;
+      margin-right: 4px;
+    }
+    .attribution {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      text-align: right;
+      margin-top: 4px;
+      padding-right: 4px;
+    }
+    .attribution a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+    }
+    .attribution a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Map ─── -->
+  <div id="map-container"></div>
+
+  <!-- ─── Loading ─── -->
+  <div id="loading-overlay">
+    <div class="loading-card">
+      <div class="loading-icon">
+        <svg class="moth-icon" viewBox="0 0 24 24" stroke="none">
+          <path d="M12 4c-1-2-4-2-4-2s1 1 2 2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M12 4c1-2 4-2 4-2s-1 1-2 2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <ellipse cx="12" cy="11" rx="2" ry="7" />
+          <path d="M10 6C5 4 2 7 2 12c0 4 3 7 8 2V6z" opacity="0.9"/>
+          <path d="M14 6c5-2 8 1 8 6 0 4-3 7-8 2V6z" opacity="0.9"/>
+        </svg>
+      </div>
+      <h1 class="loading-title">Bogong Moth Tracker</h1>
+      <p class="loading-subtitle">Australia's Bogong Moths Over Time</p>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <p class="loading-status" id="loading-status">Initializing...</p>
+    </div>
+  </div>
+
+  <!-- ─── Top-Left Panel: Controls + Stats ─── -->
+  <div id="top-left-panel">
+    <!-- Playback Controls -->
+    <footer id="controls" class="glass hidden">
+      <div class="controls-row">
+        <button id="btn-rewind" class="ctrl-btn" title="Restart (Home)">⏮</button>
+        <button id="btn-play" class="ctrl-btn play-btn" title="Play / Pause (Space)">▶</button>
+        <input type="range" id="scrubber" class="scrubber" min="0" max="100" value="0" aria-label="Timeline">
+        <label class="fade-toggle" title="Fade old recordings">
+          <input type="checkbox" id="fade-toggle" checked>
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="fade-label">Fade</span>
+        </label>
+        <div id="map-style-selector" class="style-selector-inline">
+          <button class="style-btn active" data-style="dark" title="Dark">🌙</button>
+          <button class="style-btn" data-style="streets" title="Streets">🗺️</button>
+          <button class="style-btn" data-style="satellite" title="Satellite">🛰️</button>
+        </div>
+      </div>
+      <div class="controls-info-row">
+        <span id="day-info" class="info-chip">Day 1 of 100</span>
+        <div class="speed-ctrl">
+          <span>Speed</span>
+          <input type="range" id="speed" min="1" max="10" value="10" step="1" aria-label="Speed">
+          <span id="speed-val">10×</span>
+        </div>
+        <span id="today-info" class="info-chip">0 today</span>
+      </div>
+    </footer>
+
+    <!-- Stats Bar -->
+    <header id="stats-bar" class="glass hidden">
+      <div class="stat">
+        <span class="stat-label">📅 DATE</span>
+        <span class="stat-value" id="stat-date">—</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-label">
+          <svg class="moth-icon" viewBox="0 0 24 24" stroke="none">
+            <path d="M12 4c-1-2-4-2-4-2s1 1 2 2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M12 4c1-2 4-2 4-2s-1 1-2 2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <ellipse cx="12" cy="11" rx="2" ry="7" />
+            <path d="M10 6C5 4 2 7 2 12c0 4 3 7 8 2V6z" opacity="0.9"/>
+            <path d="M14 6c5-2 8 1 8 6 0 4-3 7-8 2V6z" opacity="0.9"/>
+          </svg> BOGONG MOTH
+        </span>
+        <span class="stat-value" id="stat-records">0</span>
+        <span class="stat-sub">sightings</span>
+      </div>
+    </header>
+    
+    <div class="attribution">
+      Data provided by <a href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
+    </div>
+  </div>
+
+  <!-- ─── Right Panel Column: hardcoded Bogong Moth info panel ─── -->
+  <div id="right-panels">
+    <div class="species-panel glass" style="border-left-color: rgb(240, 140, 50);">
+      <!-- No close button so it stays permanently -->
+      <div class="panel-header">
+        <img class="panel-img" src="https://media.australian.museum/media/dd/images/Agrotis_infusa.width-1200.343bb14.jpg" alt="Bogong Moth" loading="lazy">
+        <div class="panel-names">
+          <div class="panel-common">Bogong Moth</div>
+          <div class="panel-sci">Agrotis infusa</div>
+          <div class="panel-family">Noctuidae</div>
+        </div>
+      </div>
+      <a class="panel-link" href="https://australian.museum/learn/animals/insects/bogong-moth/" target="_blank" rel="noopener">View Bogong Moth profile ↗</a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
+  <script type="module" src="js/engine_app.js?v=2"></script>
+</body>
+</html>

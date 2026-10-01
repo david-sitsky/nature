@@ -45,6 +45,14 @@ test.describe('FrogID UI Controls', () => {
     const pills = page.locator('#filter-pills .filter-pill');
     await expect(pills).toHaveCount(1);
     await expect(pills.first()).toContainText('Green Tree Frog');
+
+    // Applying a filter should significantly decrease the total record count shown in the stats bar
+    // Wait for the stats to update
+    await expect(page.locator('#stat-records')).not.toHaveText('0');
+    const recordsText = await page.locator('#stat-records').innerText();
+    const count = parseInt(recordsText.replace(/,/g, ''), 10);
+    expect(count).toBeGreaterThan(0);
+    expect(count).toBeLessThan(1000000); // Because total without filter is ~1.18M
   });
 
   test('sound hint appears and is dismissible', async ({ page }) => {
